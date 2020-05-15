@@ -57,11 +57,14 @@ colnames(samplesinfos)<- c("sampleid","virus","day","code","animalid","treatment
 
 completeES_long<-pivot_longer(completeES,cols = -sampleid,names_to = "genesets",values_to = "es")
 
-#we clean the sample id column
-completeES_long$sampleid<-gsub("_","",completeES_long$sampleid)
+# we clean the sample id column
+completeES_long$sampleid<-gsub("_","",completeES_long$sampleid)# we replace the "_" by ""
+## we replace "CH431" by "" in order to use the ID number for merging the data set
 completeES_long$sampleid<-gsub("CH431","",completeES_long$sampleid)
-completeES_long$sampleid<-as.numeric(completeES_long$sampleid)
 samplesinfos$sampleid<-gsub("CH431-","",samplesinfos$sampleid)
+## we set the sampleid col to numeric in the ES and the sampleinfos file
+completeES_long$sampleid<-as.numeric(completeES_long$sampleid)
+
 samplesinfos$sampleid<-as.numeric(samplesinfos$sampleid)
 completeES_long_merge<-merge(completeES_long,samplesinfos)
 completeES_long_merge$day<-gsub("Day","",completeES_long_merge$day)
