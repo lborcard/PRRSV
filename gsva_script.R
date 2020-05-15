@@ -8,14 +8,18 @@ library(readxl)
 library(tidyverse)
 library(ggpubr)
 
-
+## 
 day <- 7
 #countfile<-read.delim(file = "p470/Day0/extended/p470.counts.txt",check.names = FALSE,row.names = 1)
 #the count file that is read by read.delim depends on the day argument above
 countfile<-read.delim(file = paste0("p470/Day",day,"/extended/p470.counts.txt"),check.names = FALSE,row.names = 1)
 
+#the countfile must be read as a matrix to be used in gsva function
+
 eset_matrix <- as.matrix(countfile)
 btmgeneset<-gmxToG("BTM gene sets.gmx")# from the sigpathway package
+
+#small loop to create a genesets list
 for (i in 1:346){
         
         genesets[i]<-btmgeneset[[i]]$title
@@ -53,8 +57,12 @@ results_gsva_df$sampleid<-sampleid
 #assign a new name to the data frame with Day + day of the count file + _ES (enrichment score)
 assign(paste("Day",day,"_ES",sep = ""),results_gsva_df)
 
-###################################################################
-###################At this point the 3 data frames with the enrichment score should be ready#######################
+######################################################################################################################################
+######################################################################################################################################
+###################At this point the 3 data frames  with the enrichment score should be ready#######################
+######################################################################################################################################
+######################################################################################################################################
+
 #we bind the 3 data frames by rows
 completeES<-rbind(Day0_ES_t,Day3_ES_t,Day7_ES_t)
 
@@ -83,9 +91,16 @@ samplesinfos$sampleid<-gsub("CH431-","",samplesinfos$sampleid)
 completeES_long$sampleid<-as.numeric(completeES_long$sampleid)
 
 samplesinfos$sampleid<-as.numeric(samplesinfos$sampleid)
+
+#######Major step we merge the ES data with the sample informations ####
+
 completeES_long_merge<-merge(completeES_long,samplesinfos)
+
 completeES_long_merge$day<-gsub("Day","",completeES_long_merge$day)
-completeES_long_merge$day<-str_trim(completeES_long_merge$day)#we remove the trailing whitespace
+
+#we remove the trailing whitespace
+completeES_long_merge$day<-str_trim(completeES_long_merge$day)
+
 #we transform to factors
 completeES_long_merge$genesets<-as.factor(as.character(completeES_long_merge$genesets))
 str(completeES_long_merge)
@@ -102,7 +117,7 @@ names(proliferation_longer)<-c("well","day","treatment","stimulus","animalid","n
 
 #we clean certain columns 
 
-completeES_long_merge$treatment<-word(completeES_long_merge$treatment,1)#we extract the treat value in simpler form now ("MLV","MOCK"...)
+completeES_long_merge$treatment<-word(completeES_long_merge$treatment,1)#we extract the treatment value in a simpler form now ("MLV","MOCK"...)
 completeES_long_merge$day<-factor(as.character(completeES_long_merge$day))
 completeES_long_merge$animalid<-factor(completeES_long_merge$animalid)
 proliferation_longer$animalid<-factor(proliferation_longer$animalid)
@@ -112,6 +127,7 @@ proliferation_longer$day<-factor(as.character(proliferation_longer$day))
 
 superdf<-merge(proliferation_longer,completeES_long_merge,by=c("animalid","treatment"),all = TRUE)
 
+##some graphs to explore the data
 graph2<-superdf%>%
         filter(name=="%prol. t-cells")%>%
         filter(day.x=="28")%>%
