@@ -11,10 +11,11 @@ library(ggpubr)
 
 day <- 7
 #countfile<-read.delim(file = "p470/Day0/extended/p470.counts.txt",check.names = FALSE,row.names = 1)
+#the count file that is read by read.delim depends on the day argument above
 countfile<-read.delim(file = paste0("p470/Day",day,"/extended/p470.counts.txt"),check.names = FALSE,row.names = 1)
 
 eset_matrix <- as.matrix(countfile)
-btmgeneset<-gmxToG("BTM gene sets.gmx")#from the sigpathway package
+btmgeneset<-gmxToG("BTM gene sets.gmx")# from the sigpathway package
 for (i in 1:346){
         
         genesets[i]<-btmgeneset[[i]]$title
@@ -24,10 +25,10 @@ results_gsva<-lapply(X = btmgeneset,FUN = function(x){gsva(expr=eset_matrix,
      gset.idx.list=x, 
      annotation,
      method="gsva",
-     kcdf="Poisson",
+     kcdf="Poisson",#poisson for discrete numbers
      abs.ranking=FALSE,
-     min.sz=1,
-     max.sz=Inf,
+     min.sz=1,#minimal size of each genesets
+     max.sz=Inf,#maximal size of each genesets
      parallel.sz=0,
      parallel.type="SOCK",
      mx.diff=TRUE,
@@ -41,19 +42,35 @@ results_gsva_df<-data.frame(matrix(unlist(results_gsva),#we transform the list i
                             stringsAsFactors = FALSE)
 
 results_gsva_df<-t(results_gsva_df)#we transpose because we want the genesets as col and samples as rows
+
 sampleid<-colnames(countfile)#we take the names of the samples
+
 colnames(results_gsva_df)<- genesets
-results_gsva_df$sampleid<-sampleid#add the rownames of the samples (now as rows)
+
+#add the rownames of the samples (now as rows)
+results_gsva_df$sampleid<-sampleid
+
+#assign a new name to the data frame with Day + day of the count file + _ES (enrichment score)
 assign(paste("Day",day,"_ES",sep = ""),results_gsva_df)
+
+###################################################################
+###################At this point the 3 data frames with the enrichment score should be ready#######################
 #we bind the 3 data frames by rows
 completeES<-rbind(Day0_ES_t,Day3_ES_t,Day7_ES_t)
 
 #make a samplid column containing the infos about the  samples taken from the rownames
 #completeES$sampleid <- row.names(completeES)
+
 #import the data frame containing the info about the samples
 samplesinfos <- read_excel("CH431.xlsx", 
                            col_names = FALSE, skip = 2,col_types = c("text"))
-colnames(samplesinfos)<- c("sampleid","virus","day","code","animalid","treatment","rqn")
+colnames(samplesinfos)<- c("sampleid",
+                           "virus",
+                           "day",
+                           "code",
+                           "animalid",
+                           "treatment",
+                           "rqn")
 
 completeES_long<-pivot_longer(completeES,cols = -sampleid,names_to = "genesets",values_to = "es")
 
