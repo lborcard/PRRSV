@@ -1,0 +1,131 @@
+library(Biobase)
+library(dplyr)
+library(limma)
+library(GSEABase)
+library(GSVA)
+library(sigPathway)
+library(readxl)
+library(tidyverse)
+library(ggpubr)
+
+
+day <- 7
+#countfile<-read.delim(file = "p470/Day0/extended/p470.counts.txt",check.names = FALSE,row.names = 1)
+countfile<-read.delim(file = paste0("p470/Day",day,"/extended/p470.counts.txt"),check.names = FALSE,row.names = 1)
+
+eset_matrix <- as.matrix(countfile)
+btmgeneset<-gmxToG("BTM gene sets.gmx")#from the sigpathway package
+for (i in 1:346){
+        
+        genesets[i]<-btmgeneset[[i]]$title
+}
+
+results_gsva<-lapply(X = btmgeneset,FUN = function(x){gsva(expr=eset_matrix, 
+     gset.idx.list=x, 
+     annotation,
+     method="gsva",
+     kcdf="Poisson",
+     abs.ranking=FALSE,
+     min.sz=1,
+     max.sz=Inf,
+     parallel.sz=0,
+     parallel.type="SOCK",
+     mx.diff=TRUE,
+     tau=1,#tau=switch(method,gsva=1, ssgsea=0.25, NA),
+     ssgsea.norm=TRUE,
+     verbose=TRUE)})
+
+results_gsva_df<-data.frame(matrix(unlist(results_gsva),#we transform the list in a dataframe
+                                   nrow = length(results_gsva),
+                                   byrow = T),
+                            stringsAsFactors = FALSE)
+
+results_gsva_df<-t(results_gsva_df)#we transpose because we want the genesets as col and samples as rows
+sampleid<-colnames(countfile)#we take the names of the samples
+colnames(results_gsva_df)<- genesets
+results_gsva_df$sampleid<-sampleid#add the rownames of the samples (now as rows)
+assign(paste("Day",day,"_ES",sep = ""),results_gsva_df)
+#we bind the 3 data frames by rows
+completeES<-rbind(Day0_ES_t,Day3_ES_t,Day7_ES_t)
+
+#make a samplid column containing the infos about the  samples taken from the rownames
+#completeES$sampleid <- row.names(completeES)
+#import the data frame containing the info about the samples
+samplesinfos <- read_excel("CH431.xlsx", 
+                           col_names = FALSE, skip = 2,col_types = c("text"))
+colnames(samplesinfos)<- c("sampleid","virus","day","code","animalid","treatment","rqn")
+
+completeES_long<-pivot_longer(completeES,cols = -sampleid,names_to = "genesets",values_to = "es")
+
+#we clean the sample id column
+completeES_long$sampleid<-gsub("_","",completeES_long$sampleid)
+completeES_long$sampleid<-gsub("CH431","",completeES_long$sampleid)
+completeES_long$sampleid<-as.numeric(completeES_long$sampleid)
+samplesinfos$sampleid<-gsub("CH431-","",samplesinfos$sampleid)
+samplesinfos$sampleid<-as.numeric(samplesinfos$sampleid)
+completeES_long_merge<-merge(completeES_long,samplesinfos)
+completeES_long_merge$day<-gsub("Day","",completeES_long_merge$day)
+completeES_long_merge$day<-str_trim(completeES_long_merge$day)#we remove the trailing whitespace
+#we transform to factors
+completeES_long_merge$genesets<-as.factor(as.character(completeES_long_merge$genesets))
+str(completeES_long_merge)
+
+#we take the proliferation data sets
+
+library(readxl)
+proliferation <- read_excel("T cell data/Kick_PRRSV_proliferation.xlsx", 
+                            skip = 1)
+proliferation_longer<-pivot_longer(proliferation,cols=-1:-5)
+colnames(proliferation_longer)<-tolower(colnames(proliferation_longer))
+proliferation_longer$name<-as.factor(tolower(proliferation_longer$name))
+names(proliferation_longer)<-c("well","day","treatment","stimulus","animalid","name","value" )
+
+#we clean certain columns 
+
+completeES_long_merge$treatment<-word(completeES_long_merge$treatment,1)#we extract the treat value in simpler form now ("MLV","MOCK"...)
+completeES_long_merge$day<-factor(as.character(completeES_long_merge$day))
+completeES_long_merge$animalid<-factor(completeES_long_merge$animalid)
+proliferation_longer$animalid<-factor(proliferation_longer$animalid)
+proliferation_longer$day<-factor(as.character(proliferation_longer$day))
+
+#for the last step we merge together the data sets ES and proliferation data in 1 super data frame called superdf
+
+superdf<-merge(proliferation_longer,completeES_long_merge,by=c("animalid","treatment"),all = TRUE)
+
+graph2<-superdf%>%
+        filter(name=="%prol. t-cells")%>%
+        filter(day.x=="28")%>%
+        filter(day.y=="3")%>%
+        filter(genesets=="M0")%>%
+        ggplot(aes(x=es,y=value,shape=stimulus,color=animalid))+
+        geom_point()+
+        ylab("%prol. t-cells")+
+        xlab(label = "enrichment score")+
+        theme_classic()+
+        stat_smooth(method = "lm",col="black")+
+        theme(aspect.ratio = 0.8)+
+        facet_wrap(.~treatment)
+graph3<-superdf_clean%>%
+        filter(name=="%prol. t-cells")%>%
+        filter(day.x=="56")%>%
+        filter(day.y==c("3"))%>%
+        filter(genesets=="M114.1")%>%
+        #cor(x = superdf$es,y = superdf$value,use="everything",method="pearson")%>%
+        ggplot(aes(x=es,y=value,shape=stimulus,color=animalid))+
+        geom_point()+
+        xlab(label = "enrichment score")+
+        ylab("%prol. t-cells")+
+        stat_smooth(method = "lm",col="black")+
+        theme_classic()+
+        theme(aspect.ratio = 0.8)+
+        facet_wrap(.~treatment)
+graph4<- superdf%>%
+        filter(name=="%prol. t-cells")%>%
+        ggplot(aes(x=day.x,y=value),color=treatment)+
+        geom_boxplot()+
+        geom_boxplot(aes(x=day.y,y=es))+
+        facet_wrap(~treatment)
+
+graphs<-ggarrange(graph2,graph3,graph4,common.legend = TRUE,labels = list("Day56vsDay7","Day28vsDay7"))
+print(graphs)        
+        
