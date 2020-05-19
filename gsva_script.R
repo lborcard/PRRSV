@@ -80,7 +80,10 @@ colnames(samplesinfos)<- c("sampleid",
                            "treatment",
                            "rqn")
 
-completeES_long<-pivot_longer(completeES,cols = -sampleid,names_to = "genesets",values_to = "es")
+completeES_long<-pivot_longer(completeES,
+                              cols = -sampleid,
+                              names_to = "genesets",
+                              values_to = "es")
 
 # we clean the sample id column
 completeES_long$sampleid<-gsub("_","",completeES_long$sampleid)# we replace the "_" by ""
@@ -156,10 +159,9 @@ graph3<-superdf_clean%>%
         theme(aspect.ratio = 0.8)+
         facet_wrap(.~treatment)
 graph4<- superdf%>%
-        filter(name=="%prol. t-cells")%>%
+        filter(name=="%ctl" )%>%
         ggplot(aes(x=day.x,y=value),color=treatment)+
         geom_boxplot()+
-        geom_boxplot(aes(x=day.y,y=es))+
         facet_wrap(~treatment)
 
 graphs<-ggarrange(graph2,graph3,graph4,common.legend = TRUE,labels = list("Day56vsDay7","Day28vsDay7"))

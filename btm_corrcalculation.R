@@ -1,8 +1,9 @@
-corrcalculation <- function(data_for_corr= superdfadj,Daystocompare=c(28,3),
+btm_corrcalculation <- function(data_for_corr= superdfadj,
+                                Daystocompare=c(28,3),
                             celltype="%prol. t-cells",
                             genesets,
                             treatmentofinterest=c("HP"),
-                            corr_value=0){
+                            corr_value=0.8){
   #
   library(tidyverse)
   library(corrplot)
@@ -17,7 +18,7 @@ corrcalculation <- function(data_for_corr= superdfadj,Daystocompare=c(28,3),
     filter(treatment%in%treatmentofinterest)%>%
     select(animalid,genesets,es,valueadj)%>%
     pivot_wider(names_from = genesets,values_from = es)
-
+  
   
   row.names(myfavcorr)<-myfavcorr$animalid
   myfavcorr<- myfavcorr[c(-1,-2)]
@@ -25,34 +26,29 @@ corrcalculation <- function(data_for_corr= superdfadj,Daystocompare=c(28,3),
   #myfavcorr_cor<-cor(myfavcorr)
   res.cor <- correlate(myfavcorr)
   print(head(res.cor))
-  plotrescor<-res.cor %<>%
+  res.cor<-res.cor %<>%
     focus("valueadj")%>%
     gather(-rowname, key = "colname", value = "cor") %>% 
     filter(abs(cor)>corr_value)%>%
-    print()%>%
+    print()
+  res.cor_btm<-merge(btmfamilies_char,res.cor,by.x = "geneid",by.y = "rowname")
+  print(head(res.cor_btm))
     #filter(colname=="value")%>%
-    ggplot(aes(rowname, celltype,fill=cor)) +
+  plotrescor<-res.cor_btm %>%
+    filter(NAME!=str_detect(string = NAME,pattern = "TBA"))%>%
+    filter(Family_name!="various")%>%
+    ggplot(aes(y=NAME, x=Family_name,fill=cor)) +
 
-    
-    
     geom_tile()+
     ggtitle(paste("Day",Daystocompare[1],(celltype)," vs ","Day",Daystocompare[2],"(ES)",paste(treatmentofinterest),sep = ""),
             subtitle = paste("cutoff p<0.05"," correlation value >abs(",corr_value,")",sep = ""))+
-    #coord_fixed(ratio = 1)+
-    coord_equal()+
-    coord_flip() +
-    theme_classic()
-  print((res.cor$data))
+    coord_fixed(ratio = 1)+
+    
+    
+    theme_classic()+
+    theme(axis.text.x = element_text(angle = 45,hjust = 1))
+    #coord_equal()
   return(plotrescor)
-  myfavcorr_cor_df<-as.data.frame(myfavcorr_cor)
-  zero_df <- myfavcorr_cor_df 
-  #corrplot(as.matrix(zero_df),method = "color")
-  corr_pvalues<-rcorr(as.matrix(zero_df))
-  myvalues<-flattenCorrMatrix(corr_pvalues$r,corr_pvalues$P)
-  myvalues <- myvalues%>% filter(p<0.005,row=="value" & abs(cor)>corr_value)%>%
-    arrange(cor)
-  myvalues$row<- celltype
-  
-  return(myvalues)
+
 }
 
