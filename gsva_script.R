@@ -28,7 +28,7 @@ for (i in 1:346){
 results_gsva<-lapply(X = btmgeneset,FUN = function(x){gsva(expr=eset_matrix, 
      gset.idx.list=x, 
      annotation,
-     method="gsva",
+     method="gsva",#we use the gsva method for the Enrichment scores
      kcdf="Poisson",#poisson for discrete numbers
      abs.ranking=FALSE,
      min.sz=1,#minimal size of each genesets
@@ -47,9 +47,9 @@ results_gsva_df<-data.frame(matrix(unlist(results_gsva),#we transform the list i
 
 results_gsva_df<-t(results_gsva_df)#we transpose because we want the genesets as col and samples as rows
 
-sampleid<-colnames(countfile)#we take the names of the samples
+sampleid<-colnames(countfile)#we take the names of the samples from the countfile
 
-colnames(results_gsva_df)<- genesets
+colnames(results_gsva_df)<- genesets #the genesets names are taken from the genesets vector created earlier
 
 #add the rownames of the samples (now as rows)
 results_gsva_df$sampleid<-sampleid
