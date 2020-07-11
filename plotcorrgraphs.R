@@ -6,7 +6,7 @@ for(x in treatment){
                                                               Daystocompare = p,
                                                               corr_value = 0)})
     mycorr<-bind_rows(listofcorr)
-    familyname<-"NK/T cells"
+    familyname<-"ag presentation"
     plotrescor<-mycorr %>%
       filter(NAME!=str_detect(string = NAME,
                               pattern = "TBA"))%>%
@@ -36,7 +36,7 @@ for(x in treatment){
                                        hjust = 1))+
       ggsave(path = "figures/",
              filename = paste(str_replace(mycorr$namegraph,
-                                          pattern = "%",replacement = "percent_"),"",".png"),device = "png")
+                                          pattern = "%",replacement = "percent_"),familyname,".png"),device = "png")
     
   }
 }
