@@ -17,9 +17,10 @@ countfile<-read.delim(file = paste0("p470/Day",day,"/extended/p470.counts.txt"),
 #the countfile must be read as a matrix to be used in gsva function
 
 eset_matrix <- as.matrix(countfile)
+
 btmgeneset<-gmxToG("BTM gene sets.gmx")# from the sigpathway package
 
-#small loop to create a genesets list
+#small loop to create a genesets list to label them in the dataframe
 for (i in 1:346){
         
         genesets[i]<-btmgeneset[[i]]$title
@@ -72,6 +73,7 @@ completeES<-rbind(Day0_ES_t,Day3_ES_t,Day7_ES_t)
 #import the data frame containing the info about the samples
 samplesinfos <- read_excel("CH431.xlsx", 
                            col_names = FALSE, skip = 2,col_types = c("text"))
+#we assign new names for the columns
 colnames(samplesinfos)<- c("sampleid",
                            "virus",
                            "day",
@@ -79,7 +81,7 @@ colnames(samplesinfos)<- c("sampleid",
                            "animalid",
                            "treatment",
                            "rqn")
-
+#we do a pivot of the Enrichment score (ES) to get only one column with our ES
 completeES_long<-pivot_longer(completeES,
                               cols = -sampleid,
                               names_to = "genesets",
@@ -108,7 +110,7 @@ completeES_long_merge$day<-str_trim(completeES_long_merge$day)
 completeES_long_merge$genesets<-as.factor(as.character(completeES_long_merge$genesets))
 str(completeES_long_merge)
 
-#we take the proliferation data sets
+#we take the proliferation data sets and do some cleaning
 
 library(readxl)
 proliferation <- read_excel("T cell data/Kick_PRRSV_proliferation.xlsx", 
@@ -130,7 +132,7 @@ proliferation_longer$day<-factor(as.character(proliferation_longer$day))
 
 superdf<-merge(proliferation_longer,completeES_long_merge,by=c("animalid","treatment"),all = TRUE)
 
-##some graphs to explore the data
+##some graphs to explore the data 
 graph2<-superdf%>%
         filter(name=="%prol. t-cells")%>%
         filter(day.x=="28")%>%
@@ -159,11 +161,11 @@ graph3<-superdf_clean%>%
         theme(aspect.ratio = 0.8)+
         facet_wrap(.~treatment)
 graph4<- superdf%>%
-        filter(name=="%ctl" )%>%
+        filter(name=="%prol. treg" )%>%
         ggplot(aes(x=day.x,y=value),color=treatment)+
         geom_boxplot()+
         facet_wrap(~treatment)
-
+print(graph4)
 graphs<-ggarrange(graph2,graph3,graph4,common.legend = TRUE,labels = list("Day56vsDay7","Day28vsDay7"))
 print(graphs)        
         
