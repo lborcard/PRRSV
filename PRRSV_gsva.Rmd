@@ -2,55 +2,55 @@
 title: "PRRSV-GSVA"
 output: github_document
 ---
-
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,eval = FALSE)
 ```
 
-## Libraries
+## Summary
+
+PRRSV is a porcine virus. The idea of the project is to use single sample gene set enrichment scores to correlate the early innate response with antibody response at a later timepoint. 24 animal animals were separated in 4 different groups:
+
+
+Loading the necessary packages
+
+
+```{r}
+## First specify the packages of interest
+packages = c("tidyverse","Biobase","limma","GSEABase","sigPathway","readxl","ggpubr")
+
+## Now load or install&load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      BiocManager::install(x)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+
 ```
-library(Biobase)
-library(dplyr)
-library(limma)
-library(GSEABase)
-library(GSVA)
-library(sigPathway)
-library(readxl)
-library(tidyverse)
-library(ggpubr)
-```
-## files necessary
-
-
-
-```{r cars}
-library(Biobase)
-library(dplyr)
-library(limma)
-library(GSEABase)
-library(GSVA)
-library(sigPathway)
-library(readxl)
-library(tidyverse)
-library(ggpubr)
-
 ## 
-day <- 7
-#countfile<-read.delim(file = "p470/Day0/extended/p470.counts.txt",check.names = FALSE,row.names = 1)
-#the count file that is read by read.delim depends on the day argument above
+we change the value for the day
+
+```{r,echo=TRUE}
 countfile<-read.delim(file = paste0("p470/Day",day,"/extended/p470.counts.txt"),check.names = FALSE,row.names = 1)
-
-#the countfile must be read as a matrix to be used in gsva function
-
+##the count file that is read by read.delim depends on the day argument above
+```
+small loop to create a genesets list
+```{r,echo=FALSE}
+##the countfile must be read as a matrix to be used in gsva function
 eset_matrix <- as.matrix(countfile)
-btmgeneset<-gmxToG("BTM gene sets.gmx")# from the sigpathway package
-
-#small loop to create a genesets list
 for (i in 1:346){
         
         genesets[i]<-btmgeneset[[i]]$title
 }
+##we create the btmgeneset using the gmx file
+btmgeneset<-gmxToG("BTM gene sets.gmx")# from the sigpathway package
+```
 
+### Main function of the GSVA that will generate the Enrichment Scores
+```{r,echo=TRUE}
 results_gsva<-lapply(X = btmgeneset,FUN = function(x){gsva(expr=eset_matrix, 
      gset.idx.list=x, 
      annotation,
@@ -66,6 +66,10 @@ results_gsva<-lapply(X = btmgeneset,FUN = function(x){gsva(expr=eset_matrix,
      ssgsea.norm=TRUE,
      verbose=TRUE)})
 
+
+```
+
+```{r,echo=TRUE}
 results_gsva_df<-data.frame(matrix(unlist(results_gsva),#we transform the list in a dataframe
                                    nrow = length(results_gsva),
                                    byrow = T),
@@ -78,17 +82,45 @@ sampleid<-colnames(countfile)#we take the names of the samples
 colnames(results_gsva_df)<- genesets
 
 #add the rownames of the samples (now as rows)
-results_gsva_df$sampleid<-sampleid
 
-#assign a new name to the data frame with Day + day of the count file + _ES (enrichment score)
+
+##assign a new name to the data frame with Day + day of the count file + _ES (enrichment score)
+```
+
+```{r,echo=FALSE}
+results_gsva_df$sampleid<-sampleid
 assign(paste("Day",day,"_ES",sep = ""),results_gsva_df)
+```
+
+We bind the 3 data frames togther
+```{r}
+#we bind the 3 data frames by rows
+completeES<-rbind(Day0_ES_t,Day3_ES_t,Day7_ES_t)
+head(completeES)
+dim(completeES)
+```
+
+```{r}
+#we do a pivot of the Enrichment score (ES) to get only one column with our ES
+completeES_long<-pivot_longer(completeES,
+                              cols = -sampleid,
+                              names_to = "genesets",
+                              values_to = "es")
+
+# we clean the sample id column
+completeES_long$sampleid<-gsub("_","",completeES_long$sampleid)# we replace the "_" by ""
+## we replace "CH431" by "" in order to use the ID number for merging the data set
+completeES_long$sampleid<-gsub("CH431","",completeES_long$sampleid)
+samplesinfos$sampleid<-gsub("CH431-","",samplesinfos$sampleid)
+## we set the sampleid col to numeric in the ES and the sampleinfos file
+completeES_long$sampleid<-as.numeric(completeES_long$sampleid)
 ```
 
 ## Including Plots
 
 You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
+```{r , echo=FALSE}
 plot(pressure)
 ```
 
