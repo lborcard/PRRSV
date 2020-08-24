@@ -8,7 +8,7 @@ btm_corrcalculation <- function(data_for_corr= superdfadj,
   #
   library(tidyverse)
   library(corrplot)
-  library(Hmisc)
+  #library(Hmisc)
   library(corrr)
   library(data.table)
   
@@ -27,12 +27,11 @@ btm_corrcalculation <- function(data_for_corr= superdfadj,
   row.names(myfavcorr)<-myfavcorr$animalid
   myfavcorr<- myfavcorr[c(-1,-2)]
   #myfavcorr_cor<-cor(myfavcorr)
-  res.cor <- correlate(myfavcorr,method = "pearson")
+  res.cor <- correlate(myfavcorr,method = "kendall")
   res.cor<-res.cor %<>%
     focus(myvalue)%>%
     gather(-rowname, key = "colname", value = "cor") %>% 
-    mutate(rsquared=cor^2)%>%
-    filter(cor^2>corr_value)%>%
+    mutate(rsquared=sign(cor)*cor^2)%>%
     #filter(rsquared>corr_value)%>%
     print()
   res.cor_btm<-merge(btmfamilies_char,res.cor,by.x = "geneid",by.y = "rowname")

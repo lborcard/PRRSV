@@ -148,18 +148,20 @@ graph2<-superdf%>%
         facet_wrap(.~treatment)
 graph3<-superdf_clean%>%
         filter(name=="%prol. t-cells")%>%
-        filter(day.x=="56")%>%
-        filter(day.y==c("3"))%>%
-        filter(genesets=="M114.1")%>%
+        filter(day.x=="42")%>%
+        filter(day.y==c("7"))%>%
+        filter(genesets=="M67")%>%
         #cor(x = superdf$es,y = superdf$value,use="everything",method="pearson")%>%
         ggplot(aes(x=es,y=value,shape=stimulus,color=animalid))+
         geom_point()+
         xlab(label = "enrichment score")+
         ylab("%prol. t-cells")+
         stat_smooth(method = "lm",col="black")+
+        ggtitle("M67")+
         theme_classic()+
         theme(aspect.ratio = 0.8)+
         facet_wrap(.~treatment)
+print(graph3)
 graph4<- superdf%>%
         filter(name=="%prol. treg" )%>%
         ggplot(aes(x=day.x,y=value),color=treatment)+
