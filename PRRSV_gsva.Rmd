@@ -31,7 +31,9 @@ package.check <- lapply(
 
 ```
 ## 
-we change the value for the day
+we can change the value for the day
+
+day <- 7
 
 ```{r,echo=TRUE}
 countfile<-read.delim(file = paste0("p470/Day",day,"/extended/p470.counts.txt"),check.names = FALSE,row.names = 1)
