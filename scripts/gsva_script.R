@@ -1,12 +1,15 @@
-library(Biobase)
-library(dplyr)
-library(limma)
-library(GSEABase)
-library(GSVA)
-library(sigPathway)
-library(readxl)
-library(tidyverse)
-library(ggpubr)
+packages = c("tidyverse","Biobase","limma","GSEABase","sigPathway","readxl","ggpubr")
+
+## Now load or install&load all
+package.check <- lapply(
+        packages,
+        FUN = function(x) {
+                if (!require(x, character.only = TRUE)) {
+                        BiocManager::install(x)
+                        library(x, character.only = TRUE)
+                }
+        }
+)
 
 ## 
 day <- 7
@@ -27,19 +30,19 @@ for (i in 1:346){
 }
 
 results_gsva<-lapply(X = btmgeneset,FUN = function(x){gsva(expr=eset_matrix, 
-     gset.idx.list=x, 
-     annotation,
-     method="gsva",#we use the gsva method for the Enrichment scores
-     kcdf="Poisson",#poisson for discrete numbers
-     abs.ranking=FALSE,
-     min.sz=1,#minimal size of each genesets
-     max.sz=Inf,#maximal size of each genesets
-     parallel.sz=0,
-     parallel.type="SOCK",
-     mx.diff=TRUE,
-     tau=1,#tau=switch(method,gsva=1, ssgsea=0.25, NA),
-     ssgsea.norm=TRUE,
-     verbose=TRUE)})
+                                                           gset.idx.list=x, 
+                                                           annotation,
+                                                           method="gsva",#we use the gsva method for the Enrichment scores
+                                                           kcdf="Poisson",#poisson for discrete numbers
+                                                           abs.ranking=FALSE,
+                                                           min.sz=1,#minimal size of each genesets
+                                                           max.sz=Inf,#maximal size of each genesets
+                                                           parallel.sz=0,
+                                                           parallel.type="SOCK",
+                                                           mx.diff=TRUE,
+                                                           tau=1,#tau=switch(method,gsva=1, ssgsea=0.25, NA),
+                                                           ssgsea.norm=TRUE,
+                                                           verbose=TRUE)})
 
 results_gsva_df<-data.frame(matrix(unlist(results_gsva),#we transform the list in a dataframe
                                    nrow = length(results_gsva),
@@ -70,17 +73,7 @@ completeES<-rbind(Day0_ES_t,Day3_ES_t,Day7_ES_t)
 #make a samplid column containing the infos about the  samples taken from the rownames
 #completeES$sampleid <- row.names(completeES)
 
-#import the data frame containing the info about the samples
-samplesinfos <- read_excel("CH431.xlsx", 
-                           col_names = FALSE, skip = 2,col_types = c("text"))
-#we assign new names for the columns
-colnames(samplesinfos)<- c("sampleid",
-                           "virus",
-                           "day",
-                           "code",
-                           "animalid",
-                           "treatment",
-                           "rqn")
+
 #we do a pivot of the Enrichment score (ES) to get only one column with our ES
 completeES_long<-pivot_longer(completeES,
                               cols = -sampleid,
@@ -95,11 +88,24 @@ samplesinfos$sampleid<-gsub("CH431-","",samplesinfos$sampleid)
 ## we set the sampleid col to numeric in the ES and the sampleinfos file
 completeES_long$sampleid<-as.numeric(completeES_long$sampleid)
 
+#import the data frame containing the info about the samples
+samplesinfos <- read_excel("CH431.xlsx", 
+                           col_names = FALSE, skip = 2,col_types = c("text"))
+#we assign new names for the columns
+colnames(samplesinfos)<- c("sampleid",
+                           "virus",
+                           "day",
+                           "code",
+                           "animalid",
+                           "treatment",
+                           "rqn")
+
 samplesinfos$sampleid<-as.numeric(samplesinfos$sampleid)
 
 #######Major step we merge the ES data with the sample informations ####
 
 completeES_long_merge<-merge(completeES_long,samplesinfos)
+
 
 completeES_long_merge$day<-gsub("Day","",completeES_long_merge$day)
 
@@ -112,7 +118,6 @@ str(completeES_long_merge)
 
 #we take the proliferation data sets and do some cleaning
 
-library(readxl)
 proliferation <- read_excel("T cell data/Kick_PRRSV_proliferation.xlsx", 
                             skip = 1)
 proliferation_longer<-pivot_longer(proliferation,cols=-1:-5)
@@ -131,6 +136,9 @@ proliferation_longer$day<-factor(as.character(proliferation_longer$day))
 #for the last step we merge together the data sets ES and proliferation data in 1 super data frame called superdf
 
 superdf<-merge(proliferation_longer,completeES_long_merge,by=c("animalid","treatment"),all = TRUE)
+##create a superdf using the ratio between the days7 and day3 /day0
+## we proliferation_clean which contains only the homologous treatment MOCK MOCK HP HP etc
+superdf_ratio_clean <- merge(proliferation_longer_clean,completeES_long_merge_ratio,by=c("animalid"),all = TRUE)
 
 ##some graphs to explore the data 
 graph2<-superdf%>%
@@ -170,4 +178,4 @@ graph4<- superdf%>%
 print(graph4)
 graphs<-ggarrange(graph2,graph3,graph4,common.legend = TRUE,labels = list("Day56vsDay7","Day28vsDay7"))
 print(graphs)        
-        
+
