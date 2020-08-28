@@ -23,4 +23,4 @@ To test this hypothesis 24 pigs were separated in 4 groups :
   
 ## Immune response in PRRSV
 
-![immune response](prrsv_response.png)
+! [immune response](prrsv_response.png)
