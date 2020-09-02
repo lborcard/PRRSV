@@ -3,6 +3,11 @@ PRRSV-GSVA
 
 ## Summary
 
+PRRSV is a porcine virus. The idea of the project is to use single
+sample gene set enrichment scores to correlate the early innate response
+with antibody response at a later timepoint. 24 animal animals were
+separated in 4 different groups:
+
 Loading the necessary packages
 
 ``` r
@@ -23,7 +28,9 @@ package.check <- lapply(
 
 ## 
 
-we change the value for the day
+we can change the value for the day
+
+day \<- 7
 
 ``` r
 countfile<-read.delim(file = paste0("p470/Day",day,"/extended/p470.counts.txt"),check.names = FALSE,row.names = 1)
