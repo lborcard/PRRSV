@@ -13,7 +13,6 @@ corrcalculation_pvalue <- function(data_for_corr= superdf_clean,
   library(corrr)
   library(data.table)
   #we create the dataframe from the data we want to check
-  str(data_for_corr)
   myfavcorr<-data_for_corr %>%
     filter(name==celltype)%>%
     filter(day.x==Daystocompare[1])%>%#we set the day we want to use for the FACS data
@@ -22,26 +21,18 @@ corrcalculation_pvalue <- function(data_for_corr= superdf_clean,
     select(animalid,genesets,es,value)%>%
     pivot_wider(names_from = genesets,values_from = es)
   
-  #row.names(myfavcorr)<-myfavcorr$animalid
   myfavcorr<- myfavcorr[-c(1)]
-  print(myfavcorr)
-  #myfavcorr_cor<-cor(myfavcorr)
- 
+  corr_pvalues<-rcorr(as.matrix(myfavcorr))
+  myvalues<-flattenCorrMatrix(corr_pvalues$r,corr_pvalues$P)%>%
+    filter(p<0.05,row=="value" & abs(cor)>corr_value)%>%
+    mutate(rsquared=cor^2*sign(cor),geneid=column)%>%
+    select(geneid,rsquared,p)
+  print(myvalues)
+
+  #myvalues <- myvalues%>% filter(p<0.05,row=="value" & abs(cor)>corr_value)%>%
+   # mutate(rsquared=cor^2*sign(cor))
+
   
-  #corrplot(as.matrix(zero_df),method = "color")
-  
-  corr_pvalues<-cor(as.matrix(myfavcorr))
-  print(corr_pvalues)
-  myvalues<-flattenCorrMatrix(corr_pvalues$r,corr_pvalues$P)
-  myvalues_sqrd<-flattenCorrMatrix(corr_pvalues$r.squared,corr_pvalues$P)
-  print(myvalues_sqrd)
-  myvalues <- myvalues%>% filter(p<0.05,row=="valueadj" & abs(cor)>corr_value)%>%
-    arrange(cor)
-  myvalues_sqrd <- myvalues_sqrd%>% filter(p<0.05,row=="value" & abs(cor)>corr_value)%>%
-    arrange(cor)
-  myvalues$row<- celltype
-  
-  
-  return(myvalues_sqrd)
+  return(myvalues)
 }
 

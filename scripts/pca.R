@@ -14,7 +14,7 @@ pca.var.per <- round(pca.var/sum(pca.var)*100, 1)
 barplot(pca.var.per, main="Scree Plot", xlab="Principal Component", ylab="Percent Variation")
 pca.data <- data.frame(Sample=rownames(pca$x),
                        X=pca$x[,1],
-                       Y=pca$x[,3])
+                       Y=pca$x[,2])
 pca.data
 pca.data$groups <-rep(c("mock","MLV","lp","hp"),each=6)
 ggplot(data=pca.data, aes(x=X, y=Y, label=Sample,color=groups)) +
