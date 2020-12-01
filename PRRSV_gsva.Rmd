@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE,eval = FALSE)
 
 PRRSV is a porcine virus. The idea of the project is to use single sample gene set enrichment scores to correlate the early innate response with antibody response at a later timepoint. 24 animal animals were separated in 4 different groups:
 
-
+## Analysis
 Loading the necessary packages
 
 
@@ -46,7 +46,7 @@ countfile<-read.delim(file = paste0("p470/Day",day,"/extended/p470.counts.txt"),
                       check.names = FALSE,row.names = 1)
 ##the count file that is read by read.delim depends on the day argument above
 ```
-small loop to create a genesets list
+Small loop to create a genesets list from the GMX file
 ```{r,echo=FALSE}
 ##the countfile must be read as a matrix to be used in gsva function
 eset_matrix <- as.matrix(countfile)
@@ -93,7 +93,7 @@ colnames(results_gsva_df)<- genesets
 #add the rownames of the samples (now as rows)
 
 
-##assign a new name to the data frame with Day + day of the count file + _ES (enrichment score)
+## assign a new name to the data frame with Day + day of the count file + _ES (enrichment score)
 ```
 
 ```{r,echo=FALSE}
@@ -101,22 +101,25 @@ results_gsva_df$sampleid<-sampleid
 assign(paste("Day",day,"_ES",sep = ""),results_gsva_df)
 ```
 
-We bind the 3 data frames togther
+#### We bind the 3 data frames together
 ```{r}
-#we bind the 3 data frames by rows
+
 completeES<-rbind(Day0_ES_t,Day3_ES_t,Day7_ES_t)
 head(completeES)
 dim(completeES)
 ```
-
+#### We do a pivot of the Enrichment score (ES) to get only one column with our ES
 ```{r}
-#we do a pivot of the Enrichment score (ES) to get only one column with our ES
+
 completeES_long<-pivot_longer(completeES,
                               cols = -sampleid,
                               names_to = "genesets",
                               values_to = "es")
 
-# we clean the sample id column
+```
+
+#### We clean the sample id column
+```{r}
 completeES_long$sampleid<-gsub("_","",completeES_long$sampleid)# we replace the "_" by ""
 ## we replace "CH431" by "" in order to use the ID number for merging the data set
 completeES_long$sampleid<-gsub("CH431","",completeES_long$sampleid)
@@ -124,9 +127,9 @@ samplesinfos$sampleid<-gsub("CH431-","",samplesinfos$sampleid)
 ## we set the sampleid col to numeric in the ES and the sampleinfos file
 completeES_long$sampleid<-as.numeric(completeES_long$sampleid)
 ```
-
+#### Import the data frame containing the info about the samples
 ```{r}
-#import the data frame containing the info about the samples
+
 samplesinfos <- read_excel("CH431.xlsx", 
                            col_names = FALSE, skip = 2,col_types = c("text"))
 #we assign new names for the columns
@@ -184,9 +187,9 @@ head(proliferation_longer)
 proliferation_longer$stimulus<-as.factor(proliferation_longer$stimulus)
 levels(proliferation_longer$stimulus)<- c("LP","HP","MOCK","MLV")
 ```
-### We calculate the adjusted value for each value of proliferation, i.e we
-### subtract the value of the stimulation with "MED" (MOCK) to the homologous
-### stimulation
+ We calculate the adjusted value for each value of proliferation, i.e we
+ subtract the value of the stimulation with "MED" (MOCK) to the homologous
+ stimulation
 ```{r}
 test_valueadj<-as.data.frame(proliferation_longer) 
 

@@ -23,5 +23,4 @@ To test this hypothesis 24 pigs were separated in 4 groups :
   
 ## Immune response in PRRSV
 
-![immune response](prrsv_response.png)
 ![image](https://www.researchgate.net/profile/Hans_Nauwynck/publication/332514104/figure/fig3/AS:749145249837057@1555621554208/Immune-response-to-porcine-reproductive-and-respiratory-syndrome-virus-PRRSV-infection.png)
