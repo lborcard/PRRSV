@@ -93,9 +93,10 @@ head(completeES)
 dim(completeES)
 ```
 
-#### We do a pivot of the Enrichment score (ES) to get only one column with our ES
+#### We do a pivot of the Enrichment score (ES) to get only one column with our ES and another with the names of the gensets
 
 ``` r
+## 
 completeES_long<-pivot_longer(completeES,
                               cols = -sampleid,
                               names_to = "genesets",

@@ -60,20 +60,19 @@ btmgeneset<-gmxToG("BTM gene sets.gmx")# from the sigpathway package
 
 ### Main function of the GSVA that will generate the Enrichment Scores
 ```{r,echo=TRUE}
-results_gsva<-lapply(X = btmgeneset,FUN = function(x){gsva(expr=eset_matrix, 
-     gset.idx.list=x, 
-     annotation,
-     method="gsva",
-     kcdf="Poisson",#poisson for discrete numbers
-     abs.ranking=FALSE,
-     min.sz=1,#minimal size of each genesets
-     max.sz=Inf,#maximal size of each genesets
-     parallel.sz=0,
-     parallel.type="SOCK",
-     mx.diff=TRUE,
-     tau=1,#tau=switch(method,gsva=1, ssgsea=0.25, NA),
-     ssgsea.norm=TRUE,
-     verbose=TRUE)})
+results_gsva<-gsva(expr=eset_matrix, 
+                   gset.idx.list=genesets_list,
+                   annotation,
+                   method="gsva",#we use the gsva method for the Enrichment scores
+                   kcdf="Poisson",#poisson for discrete numbers
+                   abs.ranking=FALSE,
+                   min.sz=1,#minimal size of each genesets
+                   max.sz=Inf,#maximal size of each genesets
+                   parallel.sz=3,
+                   mx.diff=TRUE,
+                   tau=1,#tau=switch(method,gsva=1, ssgsea=0.25, NA),
+                   ssgsea.norm=TRUE,
+                   verbose=TRUE)
 
 
 ```
@@ -86,18 +85,20 @@ results_gsva_df<-data.frame(matrix(unlist(results_gsva),#we transform the list i
 
 results_gsva_df<-t(results_gsva_df)#we transpose because we want the genesets as col and samples as rows
 
-sampleid<-colnames(countfile)#we take the names of the samples
+#we take the names of the samples
+sampleid<-colnames(countfile)
 
 colnames(results_gsva_df)<- genesets
 
 #add the rownames of the samples (now as rows)
 
 
-## assign a new name to the data frame with Day + day of the count file + _ES (enrichment score)
-```
 
+```
+### Assign a new name to the data frame with Day + day of the count file + _ES (enrichment score)
 ```{r,echo=FALSE}
 results_gsva_df$sampleid<-sampleid
+
 assign(paste("Day",day,"_ES",sep = ""),results_gsva_df)
 ```
 
@@ -108,9 +109,9 @@ completeES<-rbind(Day0_ES_t,Day3_ES_t,Day7_ES_t)
 head(completeES)
 dim(completeES)
 ```
-#### We do a pivot of the Enrichment score (ES) to get only one column with our ES
+#### We do a pivot of the Enrichment score (ES) to get only one column with our ES and another with the names of the gensets
 ```{r}
-
+## 
 completeES_long<-pivot_longer(completeES,
                               cols = -sampleid,
                               names_to = "genesets",
@@ -120,8 +121,9 @@ completeES_long<-pivot_longer(completeES,
 
 #### We clean the sample id column
 ```{r}
-completeES_long$sampleid<-gsub("_","",completeES_long$sampleid)# we replace the "_" by ""
-## we replace "CH431" by "" in order to use the ID number for merging the data set
+# we replace the "_" by ""
+completeES_long$sampleid<-gsub("_","",completeES_long$sampleid)
+## we replace "CH431" by "" in order to use the ID number to merge the data sets
 completeES_long$sampleid<-gsub("CH431","",completeES_long$sampleid)
 samplesinfos$sampleid<-gsub("CH431-","",samplesinfos$sampleid)
 ## we set the sampleid col to numeric in the ES and the sampleinfos file

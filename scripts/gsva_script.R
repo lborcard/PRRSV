@@ -1,4 +1,4 @@
-packages = c("tidyverse","Biobase","limma","GSEABase","sigPathway","readxl","ggpubr")
+packages = c("tidyverse","Biobase","limma","GSEABase","sigPathway","readxl","GSVA")
 
 ## Now load or install&load all
 package.check <- lapply(
@@ -14,20 +14,26 @@ package.check <- lapply(
 ## 
 day <- 7
 #countfile<-read.delim(file = "p470/Day0/extended/p470.counts.txt",check.names = FALSE,row.names = 1)
-#the count file that is read by read.delim depends on the day argument above
-countfile<-read.delim(file = paste0("p470/Day",day,"/extended/p470.counts.txt"),check.names = FALSE,row.names = 1)
+#the count file that is read by read.delim depends on the day argument above and
+countfile<-read.delim(file = file.choose(new = "Find the countfile of the required day"),check.names = FALSE,row.names = 1)
 
 #the countfile must be read as a matrix to be used in gsva function
 
 eset_matrix <- as.matrix(countfile)
 
+#we import the genesets
 btmgeneset<-gmxToG("BTM gene sets.gmx")# from the sigpathway package
-
+library(sigPathway)
+porsign<-read.gmt("modules/PorSignDB.gmt")
+library(clusterProfiler)
+btmgeneset<-read.gmt("~/Documents/Bioinformatics/Projects/PRRSV project/PRRSV/BTM gene sets.gmx")
 #small loop to create a genesets list to label them in the dataframe
+genesets_list<-list()
+genesets_title<-c()
 for (i in 1:346){
         
-        genesets[i]<-btmgeneset[[i]]$title
-}
+        genesets_title[i]<-btmgeneset[[i]]$title
+        genesets_list[[i]]<-btmgeneset[[i]]$probes}
 
 results_gsva<-lapply(X = btmgeneset,FUN = function(x){gsva(expr=eset_matrix, 
                                                            gset.idx.list=x, 
@@ -43,6 +49,38 @@ results_gsva<-lapply(X = btmgeneset,FUN = function(x){gsva(expr=eset_matrix,
                                                            tau=1,#tau=switch(method,gsva=1, ssgsea=0.25, NA),
                                                            ssgsea.norm=TRUE,
                                                            verbose=TRUE)})
+
+results_gsva_test<-gsva(expr=eset_matrix, 
+                   gset.idx.list=btmgeneset,
+                   annotation,
+                   method="gsva",#we use the gsva method for the Enrichment scores
+                   kcdf="Poisson",#poisson for discrete numbers
+                   abs.ranking=FALSE,
+                   min.sz=1,#minimal size of each genesets
+                   max.sz=Inf,#maximal size of each genesets
+                   parallel.sz=3,
+                   mx.diff=TRUE,
+                   tau=1,#tau=switch(method,gsva=1, ssgsea=0.25, NA),
+                   ssgsea.norm=TRUE,
+                   verbose=TRUE)
+##Loading the database of signatures
+pig_gs<-msigdbr::msigdbr(species = "Sus scrofa")
+# sfiltering of the category C7 which only deals with immune response
+pig_gs_c7<-filter(pig_gs,gs_cat=="C7")
+ensembl<-bitr(pig_gs_c7$entrez_gene,"ENTREZID","UNIGENE",OrgDb = "org.Ss.eg.db")
+results_gsva_porsign<-gsva(expr=eset_matrix, 
+                        gset.idx.list=porsign,
+                        annotation,
+                        method="gsva",#we use the gsva method for the Enrichment scores
+                        kcdf="Poisson",#poisson for discrete numbers
+                        abs.ranking=FALSE,
+                        min.sz=1,#minimal size of each genesets
+                        max.sz=Inf,#maximal size of each genesets
+                        parallel.sz=3,
+                        mx.diff=TRUE,
+                        tau=1,#tau=switch(method,gsva=1, ssgsea=0.25, NA),
+                        ssgsea.norm=TRUE,
+                        verbose=TRUE)
 
 results_gsva_df<-data.frame(matrix(unlist(results_gsva),#we transform the list in a dataframe
                                    nrow = length(results_gsva),
@@ -82,9 +120,11 @@ completeES_long<-pivot_longer(completeES,
 
 # we clean the sample id column
 completeES_long$sampleid<-gsub("_","",completeES_long$sampleid)# we replace the "_" by ""
+
 ## we replace "CH431" by "" in order to use the ID number for merging the data set
 completeES_long$sampleid<-gsub("CH431","",completeES_long$sampleid)
 samplesinfos$sampleid<-gsub("CH431-","",samplesinfos$sampleid)
+
 ## we set the sampleid col to numeric in the ES and the sampleinfos file
 completeES_long$sampleid<-as.numeric(completeES_long$sampleid)
 
@@ -126,20 +166,51 @@ proliferation_longer$name<-as.factor(tolower(proliferation_longer$name))
 names(proliferation_longer)<-c("well","day","treatment","stimulus","animalid","name","value" )
 
 #we clean certain columns 
-
 completeES_long_merge$treatment<-word(completeES_long_merge$treatment,1)#we extract the treatment value in a simpler form now ("MLV","MOCK"...)
 completeES_long_merge$day<-factor(as.character(completeES_long_merge$day))
 completeES_long_merge$animalid<-factor(completeES_long_merge$animalid)
+#
 proliferation_longer$animalid<-factor(proliferation_longer$animalid)
 proliferation_longer$day<-factor(as.character(proliferation_longer$day))
+##We change the values of the stimulus (1-3-4=LP,1-7-3 =HP,MED=MOCK,MLV= vr2234)
+proliferation_longer$stimulus<-as.factor(proliferation_longer$stimulus)
+levels(proliferation_longer$stimulus)<- c("LP","HP","MOCK","MLV")
+########
+## we calculate the adjusted value for each value of proliferation, ie we sub-
+## subtract the value of the stimulation with "MED" (MOCK) to the homologous
+## stimulation
 
+test_valueadj<-as.data.frame(proliferation_longer) 
+test_valueadj$value<-replace_na(test_valueadj$value,replace = 0)
+test_test_valueadj_MOCK <- filter(test_valueadj, stimulus == "MOCK")
+
+test_test_valueadj_NONMOCK <- filter(test_valueadj, Group != "MOCK") 
+
+test_valueadj <- left_join(
+        test_valueadj,
+        test_test_valueadj_MOCK,
+        by = c("animal", "Day", "name","Group"),
+        suffix = c("", "_mock")
+) %>%
+        mutate(adjusted = value - value_mock)
+
+test_valueadj<-filter(test_valueadj,Group==stimulus)
+
+test_valueadj$valueadj<-ifelse(sign(test_valueadj$adjusted)==-1,0,test_valueadj$adjusted)
+
+proliferation_longer_adjusted<-test_valueadj[-c(3,7,8,9)]
+
+colnames(proliferation_longer_adjusted)<- c("day","treatment","animalid","name","value","valueadj")
+```
+-------
 #for the last step we merge together the data sets ES and proliferation data in 1 super data frame called superdf
 
 superdf<-merge(proliferation_longer,completeES_long_merge,by=c("animalid","treatment"),all = TRUE)
+
 ##create a superdf using the ratio between the days7 and day3 /day0
 ## we proliferation_clean which contains only the homologous treatment MOCK MOCK HP HP etc
 superdf_ratio_clean <- merge(proliferation_longer_clean,completeES_long_merge_ratio,by=c("animalid"),all = TRUE)
-
+superdfadj_abtiters<-merge()
 ##some graphs to explore the data 
 graph2<-superdf%>%
         filter(name=="%prol. t-cells")%>%
